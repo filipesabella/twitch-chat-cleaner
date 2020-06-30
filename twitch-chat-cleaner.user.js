@@ -103,6 +103,8 @@ function listenToMessages() {
     const counterContainer = document.createElement('div');
     counterContainer.id = 'counter-container';
     counterContainer.style.cursor = 'pointer';
+    counterContainer.style.userSelect = 'none';
+    counterContainer.innerHTML = '🚯';
     counterContainer.onclick = () => {
       console.log(blockedMessages.join('\n'));
       showOptions();
