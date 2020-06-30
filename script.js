@@ -1,54 +1,65 @@
 // ==UserScript==
 // @name         Twitch chat cleaner
 // @namespace    https://filipesabella.com
-// @version      0.1
+// @version      0.2
 // @description  Twitch chat cleaner
 // @author       You
 // @match        https://www.twitch.tv/*
-// @grant        none
 // ==/UserScript==
 
-const DUPLICATED_PHRASE_THRESHOLD = 1.7;
-const TOO_MANY_EMOJI_THRESHOLD = 3;
-const TOO_MANY_WORDS = 40;
+const defaults = {
+  spammy: true,
+  emojiOnly: true,
+  allCaps: true,
+  // if a message contains any of these, it's discarded
+  garbageWords: [
+    'lulw',
+    'you can use quotes',
+  ],
+  maxWords: 40,
+  tooManyDuplicatesThreshold: 1.7,
+  tooManyEmojiThreshold: 3,
+};
 
-// if a message contains any of these, it's discarded
-const garbageWords = ['OMEGALAUGHING', 'ZULULING', 'POGGERS', 'LIBIDO', 'KEWK', 'KEKW', 'FANTASTIC, JUST NEED TO WORK ON COMM', 'KKONA', 'BBOOMER', 'LULW', 'WUT', 'PEPEGA', 'PEPW', 'NODDERS', 'DDOOMER', 'KISSAHOMIE'];
-
-// if the message matches one of these, it's discarded
-const garbageMessages = ['POG', 'POGU', 'GACHI', 'GACHIBASS', 'MONKAW', 'MONKAS', 'MONKAGIGA', 'LULWUT', 'PEPEHANDS', 'PEPEJAM', 'PEPEJAMMER', 'GACHIHYPER'];
-
-function isGarbage(s) {
+function isGarbage(options, s) {
   const trimmed = s.trim();
   const upperCased = trimmed.toUpperCase();
   const words = trimmed.split(' ').filter(s => s !== '');
 
   const isUpperCase = s => s === upperCased;
-  const hasEmoji = s => !!s.match(/[a-z]+[A-Z]+/);
-  const containsGarbageWord = s => garbageWords.filter(g => upperCased.includes(g)).length > 0;
-  const isGarbageMessage = s => garbageMessages.filter(g => upperCased === g).length > 0;
-  const probableCopyPasta = s => words.length > TOO_MANY_WORDS;
-  const isDuplicatedPhrase = words => words.length / new Set(words).size >= DUPLICATED_PHRASE_THRESHOLD;
+  const containsGarbageWord = s => options
+    .garbageWords.filter(g => upperCased.includes(g)).length > 0;
+  const isMessageTooLong = s => words.length > options.maxWords;
+  const isDuplicatedPhrase = words =>
+    words.length / new Set(words).size >= options.tooManyDuplicatesThreshold;
 
-  return trimmed === '' // covers de emoji-only messages
-    ||
-    isUpperCase(trimmed) ||
-    hasEmoji(trimmed) ||
+  return (options.emojiOnly && trimmed === '') || // covers de emoji-only
+    (options.allCaps && isUpperCase(trimmed)) ||
     containsGarbageWord(trimmed) ||
-    isGarbageMessage(trimmed) ||
-    probableCopyPasta(trimmed) ||
-    isDuplicatedPhrase(words);
+    isMessageTooLong(trimmed) ||
+    (options.spammy && isDuplicatedPhrase(words));
 }
 
 function handler(event) {
-  const messageContainer = event.target;
-  const text = Array.from(messageContainer.querySelectorAll('.text-fragment')).map(e => e.innerHTML).join(' ').trim();
-  const tooManyEmoji = () => messageContainer.querySelectorAll('.chat-line__message--emote-button').length >= TOO_MANY_EMOJI_THRESHOLD;
+  const options = readOptions();
 
-  if (tooManyEmoji()) {
+  const messageContainer = event.target;
+  if (messageContainer.className !== 'chat-line__message') return;
+
+  const text = Array.from(messageContainer.querySelectorAll('.text-fragment'))
+    .map(e => e.innerHTML).join(' ').trim();
+
+  const tooManyEmoji = () => options.spammy && messageContainer
+    .querySelectorAll('.chat-line__message--emote-button')
+    .length >= options.tooManyEmojiThreshold;
+
+  if (tooManyEmoji() || isGarbage(options, text)) {
     remove(messageContainer);
-  } else if (isGarbage(text)) {
-    remove(messageContainer);
+
+    if (text !== '') {
+      blockedMessages.push(text);
+      blockedMessages = blockedMessages.slice(-30); // only last 30 messages
+    }
   }
 }
 
@@ -65,42 +76,19 @@ function remove(messageContainer) {
   if (!container) return;
 
   let counterContainer = document.getElementById('counter-container');
-  let blockedMessagesContainer = document.getElementById('blocked-messages-container');
   if (!counterContainer) {
-    blockedMessagesContainer = document.createElement('div');
-    blockedMessagesContainer.id = 'blocked-messages-container';
-    blockedMessagesContainer.style.display = 'none';
-    blockedMessagesContainer.style.position = 'fixed';
-    blockedMessagesContainer.style.top = '0';
-    blockedMessagesContainer.style.left = '0';
-    blockedMessagesContainer.style.bottom = '0';
-    blockedMessagesContainer.style.background = '#fcc200';
-    blockedMessagesContainer.style.width = '300px';
-    blockedMessagesContainer.style.zIndex = '999999';
-    blockedMessagesContainer.style.overflow = 'auto';
-    document.body.appendChild(blockedMessagesContainer);
-
     counterContainer = document.createElement('div');
     counterContainer.id = 'counter-container';
     counterContainer.style.cursor = 'pointer';
     counterContainer.onclick = () => {
-      if (blockedMessagesContainer.style.display === 'none') {
-        blockedMessagesContainer.style.display = 'block';
-        blockedMessagesContainer.innerHTML = blockedMessages.join('');
-        blockedMessagesContainer.scrollTop = blockedMessagesContainer.scrollHeight;
-      } else {
-        blockedMessagesContainer.style.display = 'none';
-      }
+      console.log(blockedMessages.join('\n'));
+      showOptions();
     };
-    container.childNodes[1].insertBefore(counterContainer, container.querySelector('.tw-mg-r-1'));
+    container.childNodes[1]
+      .insertBefore(counterContainer, container.querySelector('.tw-mg-r-1'));
   }
 
-  counterContainer.innerHTML = ++counter;
-
-  const clone = messageContainer.cloneNode(true);
-  clone.style.display = 'block';
-  blockedMessages.push(clone.outerHTML);
-  blockedMessages = blockedMessages.slice(-30); // only last 30 messages
+  counterContainer.innerHTML = '🚯' + ++counter;
 }
 
 function listenToMessages() {
@@ -111,6 +99,151 @@ function listenToMessages() {
   }
   c.removeEventListener('DOMNodeInserted', handler);
   c.addEventListener('DOMNodeInserted', handler, false);
+}
+
+function showOptions() {
+  const options = readOptions();
+
+  let optionsContainer = document.getElementById('options-container');
+  if (!optionsContainer) {
+    addStyle(`
+      #options-container {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 30em;
+        height: 40.5em;
+        background: #abcdef;
+        z-index: 99999;
+        padding: 1em;
+      }
+
+      #options-container .close-button {
+        position: absolute;
+        top: .5em;
+        right: 1em;
+        cursor: pointer;
+      }
+
+      #options-container label {
+        display: inline-block;
+        width: 15em;
+      }
+
+      #options-container label span {
+        text-decoration: underline;
+      }
+
+      #options-container > div {
+        margin-bottom: 1em;
+      }
+
+      #options-container input[type=number] {
+        width: 6em;
+      }
+
+      #options-container textarea {
+        width: 100%;
+        height: 17em;
+        font-family: inherit;
+        line-height: 1.5em;
+        padding: .5em;
+      }
+
+      #options-container .button {
+        text-align: right;
+      }
+
+      #options-container .button input {
+        padding: 3px;
+      }
+    `);
+
+    const garbage = options.garbageWords.join(' ');
+
+    document.body.insertAdjacentHTML('beforeend',
+      `<div id="options-container">
+        <div class="close-button"
+          id="twitchCleaner__closeButton">X</div>
+        <div>
+          <label>Block
+            <span title="Overall spam with duplicated text or too many emoji">
+              spammy messages
+            </span>
+          </label>
+          <input type="checkbox" id="twitchCleaner__spammy"
+            ${options.spammy && 'checked'}></input>
+        </div>
+        <div>
+          <label>Block emoji only</label>
+          <input type="checkbox" id="twitchCleaner__emojiOnly"
+            ${options.emojiOnly && 'checked'}></input>
+        </div>
+        <div>
+          <label>Block all caps</label>
+          <input type="checkbox" id="twitchCleaner__allCaps"
+            ${options.allCaps && 'checked'}></input>
+        </div>
+        <div>
+          <label>Max words per message</label>
+          <input type="number" id="twitchCleaner__maxWords"
+            value="${options.maxWords}"></input>
+        </div>
+        <div>
+          <p>Block messages containing any of the following words</p>
+          <textarea id="twitchCleaner__garbageWords">${garbage}</textarea>
+        </div>
+        <div class="button">
+          <input type="button"
+            id="twitchCleaner__save"
+            value="Save"></input>
+        </div>
+      </div>`);
+
+    optionsContainer = document.getElementById('options-container');
+
+    const {
+      top,
+      left
+    } = document.getElementById('counter-container').getBoundingClientRect();
+
+    const {
+      width,
+      height,
+    } = optionsContainer.getBoundingClientRect();
+
+    optionsContainer.style.left = left - width + 'px';
+    optionsContainer.style.top = top - height + 'px';
+
+    document.getElementById('twitchCleaner__save').onclick = () => {
+      const emojiOnly = document
+        .getElementById('twitchCleaner__emojiOnly').checked;
+      const allCaps = document
+        .getElementById('twitchCleaner__allCaps').checked;
+      const maxWords = document
+        .getElementById('twitchCleaner__maxWords').value;
+      const garbageWords = document
+        .getElementById('twitchCleaner__garbageWords')
+        .value;
+
+      storeOptions({
+        emojiOnly,
+        allCaps,
+        maxWords,
+        garbageWords,
+      });
+    };
+
+    document.getElementById('twitchCleaner__closeButton').onclick = () => {
+      optionsContainer.style.display = 'none';
+    };
+  } else {
+    optionsContainer.style.display = optionsContainer
+      .style.display === 'block' ?
+      'none' :
+      'block';
+  }
 }
 
 window.onload = listenToMessages;
@@ -132,3 +265,47 @@ history.replaceState = (f => function() {
 window.addEventListener('popstate', () => {
   window.setTimeout(listenToMessages, 1500);
 });
+
+function addStyle(css) {
+  var style = document.createElement('style');
+  style.type = 'text/css';
+  style.textContent = css;
+  document.head.appendChild(style);
+}
+
+function readOptions() {
+  try {
+    const s = localStorage.getItem('twitch-cleaner-options');
+    const options = s ? JSON.parse(s) : defaults;
+    const merged = {
+      ...defaults,
+      ...options,
+    };
+
+    // puts quotes back into multi-word items. e.g., the array:
+    // ['aaa', 'hello there', 'bbb']
+    // returns the string:
+    // aaa "hello there" bbb
+    merged.garbageWords = merged.garbageWords.map(w =>
+      w.includes(' ') ? `"${w}"` : w);
+
+    return merged;
+  } catch (e) {
+    console.error(e);
+    return defaults;
+  }
+}
+
+function storeOptions(options) {
+  // split into array and remove possible double-quotes. e.g., the string:
+  // aaa "hello there" bbb
+  // returns the array:
+  // ['aaa', 'hello there', 'bbb']
+  options.garbageWords = options.garbageWords
+    .match(/\w+|"[^"]+"/g)
+    .map(s => s.replace(/"/g, ''));
+
+  localStorage.setItem(
+    'twitch-cleaner-options',
+    JSON.stringify(options));
+}
