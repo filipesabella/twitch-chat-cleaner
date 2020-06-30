@@ -4,6 +4,7 @@
 // @version      0.4
 // @description  Twitch chat cleaner
 // @author       Filipe Sabella
+// @license      Unlicense
 // @match        https://www.twitch.tv/*
 // ==/UserScript==
 
