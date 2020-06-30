@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitch chat cleaner
 // @namespace    https://filipesabella.com
-// @version      0.2
+// @version      0.3
 // @description  Twitch chat cleaner
 // @author       You
 // @match        https://www.twitch.tv/*
@@ -11,10 +11,10 @@ const defaults = {
   spammy: true,
   emojiOnly: true,
   allCaps: true,
-  // if a message contains any of these, it's discarded
-  garbageWords: [
+  freeFilters: [
     'lulw',
     'you can use quotes',
+    '/and regexes/',
   ],
   maxWords: 40,
   tooManyDuplicatesThreshold: 1.7,
@@ -27,15 +27,24 @@ function isGarbage(options, s) {
   const words = trimmed.split(' ').filter(s => s !== '');
 
   const isUpperCase = s => s === upperCased;
-  const containsGarbageWord = s => options
-    .garbageWords.filter(g => upperCased.includes(g)).length > 0;
+
+  const filteredOut = s => options
+    .freeFilters.filter(freeFilter => {
+      if (freeFilter[0] !== '/') {
+        return upperCased.includes(freeFilter);
+      } else {
+        const [_, regex, flags] = freeFilter.match(/\/(.*)\/(.*)/);
+        return new RegExp(regex, flags || 'i').test(upperCased);
+      }
+    }).length > 0;
+
   const isMessageTooLong = s => words.length > options.maxWords;
   const isDuplicatedPhrase = words =>
     words.length / new Set(words).size >= options.tooManyDuplicatesThreshold;
 
-  return (options.emojiOnly && trimmed === '') || // covers de emoji-only
+  return (options.emojiOnly && trimmed === '') ||
     (options.allCaps && isUpperCase(trimmed)) ||
-    containsGarbageWord(trimmed) ||
+    filteredOut(trimmed) ||
     isMessageTooLong(trimmed) ||
     (options.spammy && isDuplicatedPhrase(words));
 }
@@ -71,13 +80,24 @@ function remove(messageContainer) {
   // messageContainer.remove();
   messageContainer.style.display = 'none';
 
-  const container = document.querySelector('.chat-input__buttons-container');
+  document.getElementById('counter-container').innerHTML = '🚯' + ++counter;
+}
 
-  if (!container) return;
+function listenToMessages() {
+  const c = document.querySelector('.chat-scrollable-area__message-container');
+  if (!c) {
+    window.setTimeout(listenToMessages, 500);
+    return;
+  }
 
-  let counterContainer = document.getElementById('counter-container');
-  if (!counterContainer) {
-    counterContainer = document.createElement('div');
+  c.removeEventListener('DOMNodeInserted', handler);
+  c.addEventListener('DOMNodeInserted', handler, false);
+
+  if (!document.getElementById('counter-container')) {
+    const container = document.querySelector('.chat-input__buttons-container');
+    if (!container) return;
+
+    const counterContainer = document.createElement('div');
     counterContainer.id = 'counter-container';
     counterContainer.style.cursor = 'pointer';
     counterContainer.onclick = () => {
@@ -88,17 +108,6 @@ function remove(messageContainer) {
       .insertBefore(counterContainer, container.querySelector('.tw-mg-r-1'));
   }
 
-  counterContainer.innerHTML = '🚯' + ++counter;
-}
-
-function listenToMessages() {
-  const c = document.querySelector('.chat-scrollable-area__message-container');
-  if (!c) {
-    window.setTimeout(listenToMessages, 500);
-    return;
-  }
-  c.removeEventListener('DOMNodeInserted', handler);
-  c.addEventListener('DOMNodeInserted', handler, false);
 }
 
 function showOptions() {
@@ -114,9 +123,11 @@ function showOptions() {
         left: 0;
         width: 30em;
         height: 40.5em;
-        background: #abcdef;
         z-index: 99999;
-        padding: 1em;
+        padding: 1.5em;
+        background-color: rgb(247, 247, 248);
+        color: black;
+        border: 1px solid black;
       }
 
       #options-container .close-button {
@@ -145,7 +156,7 @@ function showOptions() {
 
       #options-container textarea {
         width: 100%;
-        height: 17em;
+        height: 15em;
         font-family: inherit;
         line-height: 1.5em;
         padding: .5em;
@@ -160,7 +171,7 @@ function showOptions() {
       }
     `);
 
-    const garbage = options.garbageWords.join(' ');
+    const garbage = options.freeFilters.join(' ');
 
     document.body.insertAdjacentHTML('beforeend',
       `<div id="options-container">
@@ -191,8 +202,16 @@ function showOptions() {
             value="${options.maxWords}"></input>
         </div>
         <div>
-          <p>Block messages containing any of the following words</p>
-          <textarea id="twitchCleaner__garbageWords">${garbage}</textarea>
+          <p>
+            Block messages that match the following
+            <span title="You can:
+  - Add words, it simply blocks messages that contain them, case insensitive
+  - Add phrases by enclosing them in double-quotes
+  - Add regular expressions by surrounding your expression with '/'">
+              (help)
+            </span>
+          </p>
+          <textarea id="twitchCleaner__freeFilters">${garbage}</textarea>
         </div>
         <div class="button">
           <input type="button"
@@ -223,15 +242,15 @@ function showOptions() {
         .getElementById('twitchCleaner__allCaps').checked;
       const maxWords = document
         .getElementById('twitchCleaner__maxWords').value;
-      const garbageWords = document
-        .getElementById('twitchCleaner__garbageWords')
+      const freeFilters = document
+        .getElementById('twitchCleaner__freeFilters')
         .value;
 
       storeOptions({
         emojiOnly,
         allCaps,
         maxWords,
-        garbageWords,
+        freeFilters,
       });
     };
 
@@ -283,11 +302,11 @@ function readOptions() {
     };
 
     // puts quotes back into multi-word items. e.g., the array:
-    // ['aaa', 'hello there', 'bbb']
+    // ['aaa', 'hello there', 'bbb', '/a regex/']
     // returns the string:
-    // aaa "hello there" bbb
-    merged.garbageWords = merged.garbageWords.map(w =>
-      w.includes(' ') ? `"${w}"` : w);
+    // aaa "hello there" bbb /a regex/
+    merged.freeFilters = merged.freeFilters.map(w =>
+      w.includes(' ') && w[0] !== '/' ? `"${w}"` : w);
 
     return merged;
   } catch (e) {
@@ -298,11 +317,11 @@ function readOptions() {
 
 function storeOptions(options) {
   // split into array and remove possible double-quotes. e.g., the string:
-  // aaa "hello there" bbb
+  // aaa "hello there" bbb /a regex/
   // returns the array:
-  // ['aaa', 'hello there', 'bbb']
-  options.garbageWords = options.garbageWords
-    .match(/\w+|"[^"]+"/g)
+  // ['aaa', 'hello there', 'bbb', '/a regex/']
+  options.freeFilters = options.freeFilters
+    .match(/\w+|"[^"]+"|\/[^\/]+\//g)
     .map(s => s.replace(/"/g, ''));
 
   localStorage.setItem(
