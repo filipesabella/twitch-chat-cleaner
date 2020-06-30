@@ -124,9 +124,8 @@ function showOptions() {
         top: 0;
         left: 0;
         width: 30em;
-        height: 40.5em;
         z-index: 99999;
-        padding: 1.5em;
+        padding: 1.5em ;
         background-color: rgb(247, 247, 248);
         color: black;
         border: 1px solid black;
@@ -150,7 +149,7 @@ function showOptions() {
         text-decoration: underline;
       }
 
-      #options-container > div {
+      #options-container > div:not(:last-child) {
         margin-bottom: 1em;
       }
 
@@ -175,7 +174,7 @@ function showOptions() {
       }
     `);
 
-    const garbage = options.freeFilters.join(' ');
+    const freeFilters = options.freeFilters.join(' ');
 
     document.body.insertAdjacentHTML('beforeend',
       `<div id="options-container">
@@ -187,22 +186,22 @@ function showOptions() {
               spammy messages
             </span>
           </label>
-          <input type="checkbox" id="twitchCleaner__spammy"
+          <input class="input" type="checkbox" id="twitchCleaner__spammy"
             ${options.spammy && 'checked'}></input>
         </div>
         <div>
           <label>Block emoji only</label>
-          <input type="checkbox" id="twitchCleaner__emojiOnly"
+          <input class="input" type="checkbox" id="twitchCleaner__emojiOnly"
             ${options.emojiOnly && 'checked'}></input>
         </div>
         <div>
           <label>Block all caps</label>
-          <input type="checkbox" id="twitchCleaner__allCaps"
+          <input class="input" type="checkbox" id="twitchCleaner__allCaps"
             ${options.allCaps && 'checked'}></input>
         </div>
         <div>
           <label>Max words per message</label>
-          <input type="number" id="twitchCleaner__maxWords"
+          <input class="input" type="number" id="twitchCleaner__maxWords"
             value="${options.maxWords}"></input>
         </div>
         <div>
@@ -215,17 +214,14 @@ function showOptions() {
               following
             </span>
           </p>
-          <textarea id="twitchCleaner__freeFilters">${garbage}</textarea>
+          <textarea
+            class="input"
+            id="twitchCleaner__freeFilters">${freeFilters}</textarea>
         </div>
         <div>
           <label>Disable all filters</label>
-          <input type="checkbox" id="twitchCleaner__disableAll"
+          <input class="input" type="checkbox" id="twitchCleaner__disableAll"
             ${options.disableAll && 'checked'}></input>
-        </div>
-        <div class="button">
-          <input type="button"
-            id="twitchCleaner__save"
-            value="Save"></input>
         </div>
       </div>`);
 
@@ -244,27 +240,29 @@ function showOptions() {
     optionsContainer.style.left = left - width + 'px';
     optionsContainer.style.top = top - height + 'px';
 
-    document.getElementById('twitchCleaner__save').onclick = () => {
-      const emojiOnly = document
-        .getElementById('twitchCleaner__emojiOnly').checked;
-      const allCaps = document
-        .getElementById('twitchCleaner__allCaps').checked;
-      const maxWords = document
-        .getElementById('twitchCleaner__maxWords').value;
-      const freeFilters = document
-        .getElementById('twitchCleaner__freeFilters')
-        .value;
-      const disableAll = document
-        .getElementById('twitchCleaner__disableAll').checked;
+    document.querySelectorAll('#options-container .input').forEach(e => {
+      e.onchange = e.keydown = () => {
+        const emojiOnly = document
+          .getElementById('twitchCleaner__emojiOnly').checked;
+        const allCaps = document
+          .getElementById('twitchCleaner__allCaps').checked;
+        const maxWords = document
+          .getElementById('twitchCleaner__maxWords').value;
+        const freeFilters = document
+          .getElementById('twitchCleaner__freeFilters')
+          .value;
+        const disableAll = document
+          .getElementById('twitchCleaner__disableAll').checked;
 
-      storeOptions({
-        emojiOnly,
-        allCaps,
-        maxWords,
-        freeFilters,
-        disableAll,
-      });
-    };
+        storeOptions({
+          emojiOnly,
+          allCaps,
+          maxWords,
+          freeFilters,
+          disableAll,
+        });
+      };
+    });
 
     document.getElementById('twitchCleaner__closeButton').onclick = () => {
       optionsContainer.style.display = 'none';
