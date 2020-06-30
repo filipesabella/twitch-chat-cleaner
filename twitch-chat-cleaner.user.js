@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitch chat cleaner
 // @namespace    https://filipesabella.com
-// @version      0.3
+// @version      0.4
 // @description  Twitch chat cleaner
 // @author       You
 // @match        https://www.twitch.tv/*
