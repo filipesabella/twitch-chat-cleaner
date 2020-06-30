@@ -22,6 +22,7 @@ const defaults = {
   tooManyEmojiThreshold: 3,
 };
 
+let options = defaults;
 let counter = 0;
 let blockedMessages = [];
 
@@ -54,8 +55,6 @@ function isGarbage(options, s) {
 }
 
 function handler(event) {
-  const options = readOptions();
-
   if (options.disableAll) return false;
 
   const messageContainer = event.target;
@@ -86,6 +85,8 @@ function remove(messageContainer) {
 }
 
 function listenToMessages() {
+  readOptions();
+
   const c = document.querySelector('.chat-scrollable-area__message-container');
   if (!c) {
     window.setTimeout(listenToMessages, 500);
@@ -113,7 +114,7 @@ function listenToMessages() {
 }
 
 function showOptions() {
-  const options = readOptions();
+  readOptions();
 
   let optionsContainer = document.getElementById('options-container');
   if (!optionsContainer) {
@@ -261,6 +262,8 @@ function showOptions() {
           freeFilters,
           disableAll,
         });
+
+        readOptions();
       };
     });
 
@@ -305,10 +308,10 @@ function addStyle(css) {
 function readOptions() {
   try {
     const s = localStorage.getItem('twitch-cleaner-options');
-    const options = s ? JSON.parse(s) : defaults;
+    const opt = s ? JSON.parse(s) : defaults;
     const merged = {
       ...defaults,
-      ...options,
+      ...opt,
     };
 
     // puts quotes back into multi-word items. e.g., the array:
@@ -318,10 +321,10 @@ function readOptions() {
     merged.freeFilters = merged.freeFilters.map(w =>
       w.includes(' ') && w[0] !== '/' ? `"${w}"` : w);
 
-    return merged;
+    options = merged;
   } catch (e) {
     console.error(e);
-    return defaults;
+    options = defaults;
   }
 }
 
