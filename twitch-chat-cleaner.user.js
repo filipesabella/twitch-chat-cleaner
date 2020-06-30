@@ -87,6 +87,12 @@ function remove(messageContainer) {
 function listenToMessages() {
   readOptions();
 
+  document.onkeyup = e => {
+    if (e.which === 27) { // escape
+      hideOptions();
+    }
+  }
+
   const c = document.querySelector('.chat-scrollable-area__message-container');
   if (!c) {
     window.setTimeout(listenToMessages, 500);
@@ -260,15 +266,17 @@ function showOptions() {
       };
     });
 
-    document.getElementById('twitchCleaner__closeButton').onclick = () => {
-      optionsContainer.style.display = 'none';
-    };
+    document.getElementById('twitchCleaner__closeButton').onclick = hideOptions;
   } else {
     optionsContainer.style.display = optionsContainer
       .style.display === 'block' ?
       'none' :
       'block';
   }
+}
+
+function hideOptions() {
+  document.getElementById('options-container').style.display = 'none';
 }
 
 window.onload = listenToMessages;
