@@ -3,7 +3,7 @@
 // @namespace    https://filipesabella.com
 // @version      0.4
 // @description  Twitch chat cleaner
-// @author       You
+// @author       Filipe Sabella
 // @match        https://www.twitch.tv/*
 // ==/UserScript==
 
