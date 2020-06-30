@@ -8,6 +8,7 @@
 // ==/UserScript==
 
 const defaults = {
+  disableAll: false,
   spammy: true,
   emojiOnly: true,
   allCaps: true,
@@ -20,6 +21,9 @@ const defaults = {
   tooManyDuplicatesThreshold: 1.7,
   tooManyEmojiThreshold: 3,
 };
+
+let counter = 0;
+let blockedMessages = [];
 
 function isGarbage(options, s) {
   const trimmed = s.trim();
@@ -52,6 +56,8 @@ function isGarbage(options, s) {
 function handler(event) {
   const options = readOptions();
 
+  if (options.disableAll) return false;
+
   const messageContainer = event.target;
   if (messageContainer.className !== 'chat-line__message') return;
 
@@ -72,14 +78,10 @@ function handler(event) {
   }
 }
 
-let counter = 0;
-let blockedMessages = [];
-
 function remove(messageContainer) {
   // removing the node causes issues with other twitch features
   // messageContainer.remove();
   messageContainer.style.display = 'none';
-
   document.getElementById('counter-container').innerHTML = '🚯' + ++counter;
 }
 
@@ -142,7 +144,9 @@ function showOptions() {
         width: 15em;
       }
 
-      #options-container label span {
+      #options-container label span,
+      #options-container p span {
+        cursor: help;
         text-decoration: underline;
       }
 
@@ -203,15 +207,20 @@ function showOptions() {
         </div>
         <div>
           <p>
-            Block messages that match the following
-            <span title="You can:
+            Block messages that match the
+            <span class="help" title="You can:
   - Add words, it simply blocks messages that contain them, case insensitive
   - Add phrases by enclosing them in double-quotes
   - Add regular expressions by surrounding your expression with '/'">
-              (help)
+              following
             </span>
           </p>
           <textarea id="twitchCleaner__freeFilters">${garbage}</textarea>
+        </div>
+        <div>
+          <label>Disable all filters</label>
+          <input type="checkbox" id="twitchCleaner__disableAll"
+            ${options.disableAll && 'checked'}></input>
         </div>
         <div class="button">
           <input type="button"
@@ -245,12 +254,15 @@ function showOptions() {
       const freeFilters = document
         .getElementById('twitchCleaner__freeFilters')
         .value;
+      const disableAll = document
+        .getElementById('twitchCleaner__disableAll').checked;
 
       storeOptions({
         emojiOnly,
         allCaps,
         maxWords,
         freeFilters,
+        disableAll,
       });
     };
 
