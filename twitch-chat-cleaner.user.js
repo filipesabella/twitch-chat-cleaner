@@ -187,22 +187,22 @@ function showOptions() {
               spammy messages
             </span>
           </label>
-          <input class="input" type="checkbox" id="twitchCleaner__spammy"
+          <input class="input" type="checkbox" name="spammy"
             ${options.spammy && 'checked'}></input>
         </div>
         <div>
           <label>Block emoji only</label>
-          <input class="input" type="checkbox" id="twitchCleaner__emojiOnly"
+          <input class="input" type="checkbox" name="emojiOnly"
             ${options.emojiOnly && 'checked'}></input>
         </div>
         <div>
           <label>Block all caps</label>
-          <input class="input" type="checkbox" id="twitchCleaner__allCaps"
+          <input class="input" type="checkbox" name="allCaps"
             ${options.allCaps && 'checked'}></input>
         </div>
         <div>
           <label>Max words per message</label>
-          <input class="input" type="number" id="twitchCleaner__maxWords"
+          <input class="input" type="number" name="maxWords"
             value="${options.maxWords}"></input>
         </div>
         <div>
@@ -217,11 +217,11 @@ function showOptions() {
           </p>
           <textarea
             class="input"
-            id="twitchCleaner__freeFilters">${freeFilters}</textarea>
+            name="freeFilters">${freeFilters}</textarea>
         </div>
         <div>
           <label>Disable all filters</label>
-          <input class="input" type="checkbox" id="twitchCleaner__disableAll"
+          <input class="input" type="checkbox" name="disableAll"
             ${options.disableAll && 'checked'}></input>
         </div>
       </div>`);
@@ -242,27 +242,18 @@ function showOptions() {
     optionsContainer.style.top = top - height + 'px';
 
     document.querySelectorAll('#options-container .input').forEach(e => {
-      e.onchange = e.keydown = () => {
-        const emojiOnly = document
-          .getElementById('twitchCleaner__emojiOnly').checked;
-        const allCaps = document
-          .getElementById('twitchCleaner__allCaps').checked;
-        const maxWords = document
-          .getElementById('twitchCleaner__maxWords').value;
-        const freeFilters = document
-          .getElementById('twitchCleaner__freeFilters')
-          .value;
-        const disableAll = document
-          .getElementById('twitchCleaner__disableAll').checked;
+      e.onkeyup = e.onkeypress = e.onchange = () => {
+        const opts = Array.from(
+          document.querySelectorAll('#options-container .input')
+        ).reduce((acc, e) => {
+          const name = e.name;
+          acc[name] = e.type === 'checkbox' ?
+            e.checked :
+            e.value;
+          return acc;
+        }, {});
 
-        storeOptions({
-          emojiOnly,
-          allCaps,
-          maxWords,
-          freeFilters,
-          disableAll,
-        });
-
+        storeOptions(opts);
         readOptions();
       };
     });
