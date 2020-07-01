@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitch chat cleaner
 // @namespace    https://filipesabella.com
-// @version      0.4
+// @version      0.5
 // @description  Twitch chat cleaner
 // @author       Filipe Sabella
 // @license      MIT
@@ -320,8 +320,9 @@ function readOptions() {
     // ['aaa', 'hello there', 'bbb', '/a regex/']
     // returns the string:
     // aaa "hello there" bbb /a regex/
-    merged.freeFilters = merged.freeFilters.map(w =>
-      w.includes(' ') && w[0] !== '/' ? `"${w}"` : w);
+    merged.freeFilters = merged.freeFilters
+      .map(w => w.includes(' ') && w[0] !== '/' ? `"${w}"` : w)
+      .map(w => w.toUpperCase());
 
     options = merged;
   } catch (e) {
