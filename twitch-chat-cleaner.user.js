@@ -35,7 +35,9 @@ function isGarbage(options, s) {
   const isUpperCase = s => s === upperCased;
 
   const filteredOut = s => options
-    .freeFilters.filter(freeFilter => {
+    .freeFilters
+    .map(w => w.toUpperCase())
+    .filter(freeFilter => {
       if (freeFilter[0] !== '/') {
         return upperCased.includes(freeFilter);
       } else {
@@ -321,8 +323,7 @@ function readOptions() {
     // returns the string:
     // aaa "hello there" bbb /a regex/
     merged.freeFilters = merged.freeFilters
-      .map(w => w.includes(' ') && w[0] !== '/' ? `"${w}"` : w)
-      .map(w => w.toUpperCase());
+      .map(w => w.includes(' ') && w[0] !== '/' ? `"${w}"` : w);
 
     options = merged;
   } catch (e) {
