@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitch chat cleaner
 // @namespace    https://filipesabella.com
-// @version      0.5
+// @version      0.6
 // @description  Twitch chat cleaner
 // @author       Filipe Sabella
 // @license      MIT
