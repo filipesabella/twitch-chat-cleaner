@@ -2,7 +2,7 @@
 // @name         Twitch chat cleaner
 // @namespace    https://filipesabella.com
 // @version      0.6
-// @description  Twitch chat cleaner
+// @description  Add spam controls and filters to twitch chat.
 // @author       Filipe Sabella
 // @license      MIT
 // @match        https://www.twitch.tv/*
