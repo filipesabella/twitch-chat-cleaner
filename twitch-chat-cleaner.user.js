@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitch chat cleaner
 // @namespace    https://filipesabella.com
-// @version      0.7
+// @version      0.8
 // @description  Add spam controls and filters to twitch chat.
 // @author       Filipe Sabella
 // @license      MIT
@@ -279,25 +279,11 @@ function hideOptions() {
   document.getElementById('options-container').style.display = 'none';
 }
 
-window.onload = listenToMessages;
-
-// replace the built-in functions. apparently
-// it's the only way to listen to these events
-history.pushState = (f => function() {
-  var ret = f.apply(this, arguments);
-  window.setTimeout(listenToMessages, 1500);
-  return ret;
-})(history.pushState);
-
-history.replaceState = (f => function() {
-  var ret = f.apply(this, arguments);
-  window.setTimeout(listenToMessages, 1500);
-  return ret;
-})(history.replaceState);
-
-window.addEventListener('popstate', () => {
-  window.setTimeout(listenToMessages, 1500);
-});
+window.setInterval(() => {
+  if (!document.getElementById('counter-container')) {
+    listenToMessages();
+  }
+}, 1000);
 
 function addStyle(css) {
   var style = document.createElement('style');
