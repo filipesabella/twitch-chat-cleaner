@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitch chat cleaner
 // @namespace    https://filipesabella.com
-// @version      0.9
+// @version      0.10
 // @description  Add spam controls and filters to twitch chat.
 // @author       Filipe Sabella
 // @license      MIT
@@ -138,9 +138,9 @@ function showOptions() {
         width: 30em;
         z-index: 99999;
         padding: 1.5em ;
-        background-color: rgb(247, 247, 248);
-        color: black;
-        border: 1px solid black;
+        background-color: rgb(24, 24, 27);
+        color: rgb(239, 239, 241);
+        border: 1px solid rgb(239, 239, 241);
       }
 
       #options-container .close-button {
@@ -163,6 +163,10 @@ function showOptions() {
 
       #options-container > div:not(:last-child) {
         margin-bottom: 1em;
+      }
+
+      #options-container input, #options-container textarea {
+        background-color: rgb(239, 239, 241);
       }
 
       #options-container input[type=number] {
