@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitch chat cleaner
 // @namespace    https://filipesabella.com
-// @version      0.8
+// @version      0.9
 // @description  Add spam controls and filters to twitch chat.
 // @author       Filipe Sabella
 // @license      MIT
@@ -19,6 +19,7 @@ const defaults = {
     '/and regexes/',
   ],
   maxWords: 40,
+  minWords: 1,
   tooManyDuplicatesThreshold: 1.7,
   tooManyEmojiThreshold: 3,
 };
@@ -46,6 +47,7 @@ function isGarbage(options, s) {
     }).length > 0;
 
   const isMessageTooLong = s => words.length > options.maxWords;
+  const isMessageTooShort = s => words.length < options.minWords;
   const isDuplicatedPhrase = words =>
     words.length / new Set(words).size >= options.tooManyDuplicatesThreshold;
 
@@ -53,6 +55,7 @@ function isGarbage(options, s) {
     (options.allCaps && isUpperCase(trimmed)) ||
     filteredOut(trimmed) ||
     isMessageTooLong(trimmed) ||
+    isMessageTooShort(trimmed) ||
     (options.spammy && isDuplicatedPhrase(words));
 }
 
@@ -212,6 +215,11 @@ function showOptions() {
           <label>Max words per message</label>
           <input class="input" type="number" name="maxWords"
             value="${options.maxWords}"></input>
+        </div>
+        <div>
+          <label>Min words per message</label>
+          <input class="input" type="number" name="minWords"
+            value="${options.minWords}"></input>
         </div>
         <div>
           <p>
