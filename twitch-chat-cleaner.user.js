@@ -349,7 +349,7 @@ function storeOptions(options) {
   // returns the array:
   // ['aaa', 'hello there', 'bbb', '/a regex/']
   options.freeFilters = options.freeFilters
-    .match(/\w+|"[^"]+"|\/[^\/]+\//g)
+    .match(/\w+|"[^"]+"|\/[^\/]+\/[a-z]*/g)
     .map(s => s.replace(/"/g, ''));
 
   options.allowWords = options.allowWords.split(' ');
