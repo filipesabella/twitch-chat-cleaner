@@ -34,28 +34,29 @@ function isGarbage(options, s) {
 
   const isUpperCase = s => s === upperCased;
 
-  const filteredOut = s => options
+  const filteredOut = _ => options
     .freeFilters
-    .map(w => w.toUpperCase())
-    .filter(freeFilter => {
-      if (freeFilter[0] !== '/') {
-        return upperCased.includes(freeFilter);
+    .map(filter => {
+      if (filter[0] === '/') {
+        const [_, regex, flags] = filter.match(/\/(.*)\/(.*)/);
+        return new RegExp(regex, flags);
       } else {
-        const [_, regex, flags] = freeFilter.match(/\/(.*)\/(.*)/);
-        return new RegExp(regex, flags || 'i').test(upperCased);
+        return new RegExp(`.*${filter}.*`, 'i');
       }
-    }).length > 0;
+    })
+    .filter(filter => filter.test(trimmed))
+    .length > 0;
 
-  const isMessageTooLong = s => words.length > options.maxWords;
-  const isMessageTooShort = s => words.length < options.minWords;
+  const isMessageTooLong = _ => words.length > options.maxWords;
+  const isMessageTooShort = _ => words.length < options.minWords;
   const isDuplicatedPhrase = words =>
     words.length / new Set(words).size >= options.tooManyDuplicatesThreshold;
 
   return (options.emojiOnly && trimmed === '') ||
     (options.allCaps && isUpperCase(trimmed)) ||
-    filteredOut(trimmed) ||
     isMessageTooLong(trimmed) ||
     isMessageTooShort(trimmed) ||
+    filteredOut(trimmed) ||
     (options.spammy && isDuplicatedPhrase(words));
 }
 
@@ -76,7 +77,7 @@ function handler(event) {
     remove(messageContainer);
 
     if (text !== '') {
-      console.log(text);
+      console.log('Filtered message: ' + text);
     }
   }
 }
