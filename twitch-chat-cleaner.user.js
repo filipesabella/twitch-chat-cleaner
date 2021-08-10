@@ -16,7 +16,7 @@ const defaults = {
   freeFilters: [
     'lulw',
     'you can use quotes',
-    '/and regexes/',
+    '/.*and regexes.*/i',
   ],
   maxWords: 40,
   minWords: 1,
@@ -230,7 +230,7 @@ function showOptions() {
             Block messages that match the
             <span class="help" title="You can:
   - Add words, it simply blocks messages that contain them, case insensitive
-  - Add phrases by enclosing them in double-quotes
+  - Add phrases by enclosing them in double-quotes, same as above
   - Add regular expressions by surrounding your expression with '/'">
               following
             </span>
