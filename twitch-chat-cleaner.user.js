@@ -118,8 +118,7 @@ function listenToMessages() {
     counterContainer.onclick = () => {
       showOptions();
     };
-    container.childNodes[1]
-      .insertBefore(counterContainer, container.querySelector('.tw-mg-r-1'));
+    container.childNodes[1].prepend(counterContainer);
   }
 
 }
