@@ -22,6 +22,7 @@ const defaults = {
   minWords: 1,
   tooManyDuplicatesThreshold: 1.7,
   tooManyEmojiThreshold: 3,
+  allowWords: [],
 };
 
 let options = defaults;
@@ -68,6 +69,10 @@ function handler(event) {
 
   const text = Array.from(messageContainer.querySelectorAll('.text-fragment'))
     .map(e => e.innerHTML).join(' ').trim();
+
+  const allowRegex =
+    new RegExp('.*(' + options.allowWords.join('|') + ').*', 'i');
+  if (allowRegex.test(text)) return false;
 
   const tooManyEmoji = () => options.spammy && messageContainer
     .querySelectorAll('.chat-line__message--emote-button')
@@ -240,6 +245,17 @@ function showOptions() {
             name="freeFilters">${freeFilters}</textarea>
         </div>
         <div>
+          <label>
+            ALLOW messages
+            <span class="help" title="Useful for adding your name, for example.
+Precedes *all* other filters, case insensitive.">
+              containing
+            </span>
+          </label>
+          <input class="input" type="text" name="allowWords"
+            value="${options.allowWords.join(' ')}"></input>
+        </div>
+        <div>
           <label>Disable all filters</label>
           <input class="input" type="checkbox" name="disableAll"
             ${options.disableAll && 'checked'}></input>
@@ -335,6 +351,8 @@ function storeOptions(options) {
   options.freeFilters = options.freeFilters
     .match(/\w+|"[^"]+"|\/[^\/]+\//g)
     .map(s => s.replace(/"/g, ''));
+
+  options.allowWords = options.allowWords.split(' ');
 
   localStorage.setItem(
     'twitch-cleaner-options',
