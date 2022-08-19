@@ -45,20 +45,31 @@ function isGarbage(options, s) {
         return new RegExp(`.*${filter}.*`, 'i');
       }
     })
-    .filter(filter => filter.test(trimmed))
-    .length > 0;
+    .find(filter => filter.test(trimmed));
 
   const isMessageTooLong = _ => words.length > options.maxWords;
   const isMessageTooShort = _ => words.length < options.minWords;
   const isDuplicatedPhrase = words =>
     words.length / new Set(words).size >= options.tooManyDuplicatesThreshold;
 
-  return (options.emojiOnly && trimmed === '') ||
-    (options.allCaps && isUpperCase(trimmed)) ||
-    isMessageTooLong(trimmed) ||
-    isMessageTooShort(trimmed) ||
-    filteredOut(trimmed) ||
-    (options.spammy && isDuplicatedPhrase(words));
+  if (options.emojiOnly && trimmed === '') {
+    return [true, 'emoji only'];
+  } else if (options.allCaps && isUpperCase(trimmed)) {
+    return [true, 'all caps'];
+  } else if (isMessageTooLong(trimmed)) {
+    return [true, 'too long'];
+  } else if (isMessageTooShort(trimmed)) {
+    return [true, 'too short'];
+  } else if (options.spammy && isDuplicatedPhrase(words)) {
+    return [true, 'spammy'];
+  } else {
+    const filter = filteredOut() || false;
+    if (filter) {
+      return [true, filter.toString()];
+    } else {
+      return [false, ''];
+    }
+  }
 }
 
 function handler(event) {
@@ -78,11 +89,14 @@ function handler(event) {
     .querySelectorAll('.chat-line__message--emote-button')
     .length >= options.tooManyEmojiThreshold;
 
-  if (tooManyEmoji() || isGarbage(options, text)) {
+  if (tooManyEmoji()) {
     remove(messageContainer);
-
-    if (text !== '') {
-      console.log('Filtered message: ' + text);
+    console.log(`Filtered message: "${text}". Reason: too many emoji.`);
+  } else {
+    const [garbage, reason] = isGarbage(options, text);
+    if (garbage) {
+      remove(messageContainer);
+      console.log(`Filtered message: "${text}". Reason: ${reason}.`);
     }
   }
 }
