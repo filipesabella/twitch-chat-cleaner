@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitch chat cleaner
 // @namespace    https://filipesabella.com
-// @version      0.20
+// @version      0.21
 // @description  Add spam controls and filters to twitch chat.
 // @author       Filipe Sabella
 // @license      MIT
@@ -72,10 +72,9 @@ function isGarbage(options, s) {
   }
 }
 
-function handler(event) {
+function handler(messageContainer) {
   if (options.disableAll) return false;
 
-  const messageContainer = event.target;
   if (messageContainer.className !== 'chat-line__message') return;
 
   const text = Array.from(messageContainer.querySelectorAll('.text-fragment'))
@@ -123,8 +122,19 @@ function listenToMessages() {
     return;
   }
 
-  c.removeEventListener('DOMNodeInserted', handler);
-  c.addEventListener('DOMNodeInserted', handler, false);
+  const observer = new MutationObserver(mutationList => {
+    for (const mutation of mutationList) {
+      const node = mutation.addedNodes[0];
+      if (node ? .classList.contains('chat-line__message')) {
+        handler(node);
+      }
+    }
+  });
+  observer.observe(c, {
+    attributes: false,
+    childList: true,
+    subtree: true
+  });
 
   if (!document.getElementById('counter-container')) {
     const container = document.querySelector('.chat-input__buttons-container');
