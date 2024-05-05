@@ -125,16 +125,12 @@ function listenToMessages() {
   const observer = new MutationObserver(mutationList => {
     for (const mutation of mutationList) {
       const node = mutation.addedNodes[0];
-      if (node ? .classList.contains('chat-line__message')) {
+      if (node?.classList.contains('chat-line__message')) {
         handler(node);
       }
     }
   });
-  observer.observe(c, {
-    attributes: false,
-    childList: true,
-    subtree: true
-  });
+  observer.observe(c, { attributes: false, childList: true, subtree: true });
 
   if (!document.getElementById('counter-container')) {
     const container = document.querySelector('.chat-input__buttons-container');
