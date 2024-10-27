@@ -125,8 +125,9 @@ function listenToMessages() {
   const observer = new MutationObserver(mutationList => {
     for (const mutation of mutationList) {
       const node = mutation.addedNodes[0];
-      if (node?.classList.contains('chat-line__message')) {
-        handler(node);
+      const maybeMessageContainer = node ? .querySelector('.chat-line__message');
+      if (maybeMessageContainer) {
+        handler(maybeMessageContainer);
       }
     }
   });
