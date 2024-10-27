@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Twitch chat cleaner
 // @namespace    https://filipesabella.com
-// @version      0.21
+// @version      0.22
 // @description  Add spam controls and filters to twitch chat.
 // @author       Filipe Sabella
 // @license      MIT
