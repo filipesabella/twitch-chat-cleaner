@@ -120,7 +120,6 @@ function listenToMessages() {
 
   const c = document.querySelector('.chat-scrollable-area__message-container');
   if (!c) {
-    window.setTimeout(listenToMessages, 500);
     return;
   }
 
@@ -133,6 +132,7 @@ function listenToMessages() {
       }
     }
   });
+
   observer.observe(c, {
     attributes: false,
     childList: true,
@@ -153,7 +153,6 @@ function listenToMessages() {
     };
     container.childNodes[1].prepend(counterContainer);
   }
-
 }
 
 function showOptions() {
