@@ -106,7 +106,7 @@ function remove(messageContainer) {
   // removing the node causes issues with other twitch features
   // messageContainer.remove();
   messageContainer.style.display = 'none';
-  document.getElementById('counter-container').innerHTML = '🚯' + ++counter;
+  document.getElementById('counter-container').innerHTML = '🚯 ' + ++counter;
 }
 
 function listenToMessages() {
@@ -148,7 +148,8 @@ function listenToMessages() {
     counterContainer.id = 'counter-container';
     counterContainer.style.cursor = 'pointer';
     counterContainer.style.userSelect = 'none';
-    counterContainer.innerHTML = '🚯';
+    counterContainer.style.fontFamily = 'monospace';
+    counterContainer.innerHTML = '🚯  ';
     counterContainer.onclick = () => {
       showOptions();
     };
@@ -169,9 +170,9 @@ function showOptions() {
         width: fit-content;
         min-width: 30em;
         z-index: 99999;
-        background-color: rgb(24, 24, 27);
-        color: rgb(239, 239, 241);
-        border: 1px solid rgb(239, 239, 241);
+        background-color: #171717;
+        color: #f0f0f0;
+        border: 1px solid #f0f0f0;
         border-radius: 0 7px 7px 7px;
       }
 
@@ -218,7 +219,15 @@ function showOptions() {
       }
 
       #options-container input, #options-container textarea {
-        background-color: rgb(239, 239, 241);
+        background-color: #f0f0f0;
+        border: 1px solid #171717;
+        padding: .3em .5em;
+        outline: 1px solid #f0f0f0;
+        transition: all .15s;
+      }
+
+      #options-container input:focus, #options-container textarea:focus {
+        outline: 1px solid #1f69ff;
       }
 
       #options-container input[type=number] {
@@ -237,15 +246,6 @@ function showOptions() {
         flex: 1;
         font-family: inherit;
         line-height: 1.5em;
-        padding: .5em;
-      }
-
-      #options-container .button {
-        text-align: right;
-      }
-
-      #options-container .button input {
-        padding: 3px;
       }
     `);
 
