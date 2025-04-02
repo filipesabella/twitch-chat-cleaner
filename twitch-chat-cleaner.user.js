@@ -80,9 +80,11 @@ function handler(messageContainer) {
   const text = Array.from(messageContainer.querySelectorAll('.text-fragment'))
     .map(e => e.innerHTML).join(' ').trim();
 
-  const allowRegex =
-    new RegExp('.*(' + options.allowWords.join('|') + ').*', 'i');
-  if (allowRegex.test(text)) return false;
+  if (options.allowWords.length > 0) {
+    const allowRegex =
+      new RegExp('.*(' + options.allowWords.join('|') + ').*', 'i');
+    if (allowRegex.test(text)) return false;
+  }
 
   const tooManyEmoji = () => options.spammy && messageContainer
     .querySelectorAll('.chat-line__message--emote-button')
@@ -377,7 +379,9 @@ function storeOptions(options) {
     .match(/\w+|"[^"]+"|\/[^\/]+\/[a-z]*/g)
     .map(s => s.replace(/"/g, ''));
 
-  options.allowWords = options.allowWords.split(' ');
+  options.allowWords = options.allowWords.split(' ')
+    .map(s => s.trim())
+    .filter(s => s);
 
   localStorage.setItem(
     'twitch-cleaner-options',
