@@ -172,13 +172,14 @@ function showOptions() {
         background-color: rgb(24, 24, 27);
         color: rgb(239, 239, 241);
         border: 1px solid rgb(239, 239, 241);
+        border-radius: 0 7px 7px 7px;
       }
 
       #options-container.hidden {
         display: none;
       }
 
-      .resize-handle {
+      #options-container .resize-handle {
         grid-area: area;
         width: 100%;
         height: 100%;
@@ -187,21 +188,22 @@ function showOptions() {
         overflow: auto;
         direction: rtl;
         transform: scaleY(-1);
+        z-index: 99999;
+      }
+
+      #options-container .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 99998;
       }
 
       #options-container .content {
         grid-area: area;
         display: flex;
         flex-direction: column;
-        padding: 1.5em;
-        gap: 1em
-      }
-
-      #options-container .close-button {
-        position: absolute;
-        top: .5em;
-        right: 1em;
-        cursor: pointer;
+        margin: 1.5em;
+        gap: 1em;
+        z-index: 99999;
       }
 
       #options-container label {
@@ -251,10 +253,9 @@ function showOptions() {
 
     document.body.insertAdjacentHTML('beforeend', `
       <div id="options-container">
+        <div class="overlay"></div>
         <div class="resize-handle"></div>
         <div class="content">
-          <div class="close-button"
-            id="twitchCleaner__closeButton">X</div>
           <div>
             <label>Block
               <span title="Overall spam with duplicated text or too many emoji">
@@ -345,7 +346,7 @@ function showOptions() {
       };
     });
 
-    document.getElementById('twitchCleaner__closeButton').onclick = hideOptions;
+    document.querySelector('#options-container .overlay').onclick = hideOptions;
   } else {
     optionsContainer.classList.toggle('hidden');
   }
