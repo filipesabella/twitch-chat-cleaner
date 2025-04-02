@@ -118,8 +118,9 @@ function listenToMessages() {
     }
   }
 
-  const c = document.querySelector('.chat-scrollable-area__message-container');
-  if (!c) {
+  const messageContainer = document
+    .querySelector('.chat-scrollable-area__message-container');
+  if (!messageContainer) {
     return;
   }
 
@@ -133,7 +134,7 @@ function listenToMessages() {
     }
   });
 
-  observer.observe(c, {
+  observer.observe(messageContainer, {
     attributes: false,
     childList: true,
     subtree: true
