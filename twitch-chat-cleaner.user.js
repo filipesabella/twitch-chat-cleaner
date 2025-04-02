@@ -163,16 +163,38 @@ function showOptions() {
   if (!optionsContainer) {
     addStyle(`
       #options-container {
-        display: block;
+        display: grid;
+        grid-template-areas: "area";
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 30em;
+        width: fit-content;
+        min-width: 30em;
         z-index: 99999;
-        padding: 1.5em ;
         background-color: rgb(24, 24, 27);
         color: rgb(239, 239, 241);
         border: 1px solid rgb(239, 239, 241);
+      }
+
+      #options-container.hidden {
+        display: none;
+      }
+
+      .resize-handle {
+        grid-area: area;
+        width: 100%;
+        height: 100%;
+        background-color: transparent;
+        resize: both;
+        overflow: auto;
+        direction: rtl;
+        transform: scaleY(-1);
+      }
+
+      #options-container .content {
+        grid-area: area;
+        display: flex;
+        flex-direction: column;
+        padding: 1.5em;
+        gap: 1em
       }
 
       #options-container .close-button {
@@ -193,10 +215,6 @@ function showOptions() {
         text-decoration: underline;
       }
 
-      #options-container > div:not(:last-child) {
-        margin-bottom: 1em;
-      }
-
       #options-container input, #options-container textarea {
         background-color: rgb(239, 239, 241);
       }
@@ -205,9 +223,16 @@ function showOptions() {
         width: 6em;
       }
 
+      #options-container .textarea-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 15em;
+      }
+
       #options-container textarea {
         width: 100%;
-        height: 15em;
+        flex: 1;
         font-family: inherit;
         line-height: 1.5em;
         padding: .5em;
@@ -224,85 +249,84 @@ function showOptions() {
 
     const freeFilters = options.freeFilters.join(' ');
 
-    document.body.insertAdjacentHTML('beforeend',
-      `<div id="options-container">
-        <div class="close-button"
-          id="twitchCleaner__closeButton">X</div>
-        <div>
-          <label>Block
-            <span title="Overall spam with duplicated text or too many emoji">
-              spammy messages
-            </span>
-          </label>
-          <input class="input" type="checkbox" name="spammy"
-            ${options.spammy && 'checked'}></input>
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="options-container">
+        <div class="resize-handle"></div>
+        <div class="content">
+          <div class="close-button"
+            id="twitchCleaner__closeButton">X</div>
+          <div>
+            <label>Block
+              <span title="Overall spam with duplicated text or too many emoji">
+                spammy messages
+              </span>
+            </label>
+            <input class="input" type="checkbox" name="spammy"
+              ${options.spammy && 'checked'}></input>
+          </div>
+          <div>
+            <label>Block emoji only</label>
+            <input class="input" type="checkbox" name="emojiOnly"
+              ${options.emojiOnly && 'checked'}></input>
+          </div>
+          <div>
+            <label>Block all caps</label>
+            <input class="input" type="checkbox" name="allCaps"
+              ${options.allCaps && 'checked'}></input>
+          </div>
+          <div>
+            <label>Max words per message</label>
+            <input class="input" type="number" name="maxWords"
+              value="${options.maxWords}"></input>
+          </div>
+          <div>
+            <label>Min words per message</label>
+            <input class="input" type="number" name="minWords"
+              value="${options.minWords}"></input>
+          </div>
+          <div class="textarea-container">
+            <p>
+              Block messages that match the
+              <span class="help" title="You can:
+    - Add words, it simply blocks messages that contain them, case insensitive
+    - Add phrases by enclosing them in double-quotes, same as above
+    - Add regular expressions by surrounding your expression with '/'">
+                following
+              </span>
+            </p>
+            <textarea
+              class="input"
+              name="freeFilters">${freeFilters}</textarea>
+          </div>
+          <div>
+            <label>
+              ALLOW messages
+              <span class="help" title="Useful for adding your name, for example.
+  Precedes *all* other filters, case insensitive.">
+                containing
+              </span>
+            </label>
+            <input class="input" type="text" name="allowWords"
+              value="${options.allowWords.join(' ')}"></input>
+          </div>
+          <div>
+            <label>Disable all filters</label>
+            <input class="input" type="checkbox" name="disableAll"
+              ${options.disableAll && 'checked'}></input>
+          </div>
         </div>
-        <div>
-          <label>Block emoji only</label>
-          <input class="input" type="checkbox" name="emojiOnly"
-            ${options.emojiOnly && 'checked'}></input>
-        </div>
-        <div>
-          <label>Block all caps</label>
-          <input class="input" type="checkbox" name="allCaps"
-            ${options.allCaps && 'checked'}></input>
-        </div>
-        <div>
-          <label>Max words per message</label>
-          <input class="input" type="number" name="maxWords"
-            value="${options.maxWords}"></input>
-        </div>
-        <div>
-          <label>Min words per message</label>
-          <input class="input" type="number" name="minWords"
-            value="${options.minWords}"></input>
-        </div>
-        <div>
-          <p>
-            Block messages that match the
-            <span class="help" title="You can:
-  - Add words, it simply blocks messages that contain them, case insensitive
-  - Add phrases by enclosing them in double-quotes, same as above
-  - Add regular expressions by surrounding your expression with '/'">
-              following
-            </span>
-          </p>
-          <textarea
-            class="input"
-            name="freeFilters">${freeFilters}</textarea>
-        </div>
-        <div>
-          <label>
-            ALLOW messages
-            <span class="help" title="Useful for adding your name, for example.
-Precedes *all* other filters, case insensitive.">
-              containing
-            </span>
-          </label>
-          <input class="input" type="text" name="allowWords"
-            value="${options.allowWords.join(' ')}"></input>
-        </div>
-        <div>
-          <label>Disable all filters</label>
-          <input class="input" type="checkbox" name="disableAll"
-            ${options.disableAll && 'checked'}></input>
-        </div>
-      </div>`);
+      </div>
+    `);
 
     optionsContainer = document.getElementById('options-container');
 
     const {
       top,
-      left
+      right,
     } = document.getElementById('counter-container').getBoundingClientRect();
 
-    const {
-      width,
-      height,
-    } = optionsContainer.getBoundingClientRect();
-
-    optionsContainer.style.left = left - width + 'px';
-    optionsContainer.style.top = top - height + 'px';
+    optionsContainer.style.right = window.innerWidth - right + 'px';
+    optionsContainer.style.bottom = window.innerHeight - top + 'px';
 
     document.querySelectorAll('#options-container .input').forEach(e => {
       e.onkeyup = e.onkeypress = e.onchange = () => {
@@ -323,15 +347,12 @@ Precedes *all* other filters, case insensitive.">
 
     document.getElementById('twitchCleaner__closeButton').onclick = hideOptions;
   } else {
-    optionsContainer.style.display = optionsContainer
-      .style.display === 'block' ?
-      'none' :
-      'block';
+    optionsContainer.classList.toggle('hidden');
   }
 }
 
 function hideOptions() {
-  document.getElementById('options-container').style.display = 'none';
+  document.getElementById('options-container').classList.add('hidden');
 }
 
 window.setInterval(() => {
