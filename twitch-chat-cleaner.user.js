@@ -220,6 +220,7 @@ function showOptions() {
 
       #options-container input, #options-container textarea {
         background-color: #f0f0f0;
+        color: #171717;
         border: 1px solid #171717;
         padding: .3em .5em;
         outline: 1px solid #f0f0f0;
