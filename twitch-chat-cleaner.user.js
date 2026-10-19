@@ -90,8 +90,6 @@ function isGarbage(options, filters, s) {
 function handler(messageContainer) {
   if (options.disableAll) return false;
 
-  if (messageContainer.className !== 'chat-line__message') return;
-
   const text = Array.from(messageContainer.querySelectorAll('.text-fragment'))
     .map(e => e.textContent).join(' ').trim();
 
@@ -117,43 +115,49 @@ function remove(messageContainer) {
   // removing the node causes issues with other twitch features
   // messageContainer.remove();
   messageContainer.style.display = 'none';
-  document.getElementById('counter-container').innerHTML = '🚯 ' + ++counter;
+  ++counter;
+  const counterContainer = document.getElementById('counter-container');
+  if (counterContainer) counterContainer.innerHTML = '🚯 ' + counter;
 }
 
+const messageSelector = '.chat-line__message';
+
+// added nodes can be text nodes, or the message line itself
+const findMessage = node => !(node instanceof Element)
+  ? null
+  : node.matches(messageSelector)
+    ? node
+    : node.querySelector(messageSelector);
+
+let observer = null;
+let observedContainer = null;
+
 function listenToMessages() {
-  readOptions();
-
-  document.onkeyup = e => {
-    if (e.which === 27) { // escape
-      hideOptions();
-    }
-  }
-
   const messageContainer = document
     .querySelector('.chat-scrollable-area__message-container');
-  if (!messageContainer) {
-    return;
+
+  // twitch can swap the chat container without re-rendering the chat input
+  if (messageContainer && messageContainer !== observedContainer) {
+    readOptions();
+
+    observer?.disconnect();
+    observer = new MutationObserver(mutationList => mutationList
+      .flatMap(mutation => Array.from(mutation.addedNodes))
+      .map(findMessage)
+      .filter(Boolean)
+      .forEach(handler));
+
+    observer.observe(messageContainer, {
+      attributes: false,
+      childList: true,
+      subtree: true
+    });
+    observedContainer = messageContainer;
   }
-
-  const observer = new MutationObserver(mutationList => {
-    for (const mutation of mutationList) {
-      const node = mutation.addedNodes[0];
-      const maybeMessageContainer = node?.querySelector('.chat-line__message');
-      if (maybeMessageContainer) {
-        handler(maybeMessageContainer);
-      }
-    }
-  });
-
-  observer.observe(messageContainer, {
-    attributes: false,
-    childList: true,
-    subtree: true
-  });
 
   if (!document.getElementById('counter-container')) {
     const container = document.querySelector('.chat-input__buttons-container');
-    if (!container) return;
+    if (!container?.childNodes[1]) return;
 
     const counterContainer = document.createElement('div');
     counterContainer.id = 'counter-container';
@@ -365,14 +369,14 @@ function showOptions() {
 }
 
 function hideOptions() {
-  document.getElementById('options-container').classList.add('hidden');
+  document.getElementById('options-container')?.classList.add('hidden');
 }
 
-window.setInterval(() => {
-  if (!document.getElementById('counter-container')) {
-    listenToMessages();
-  }
-}, 1000);
+document.addEventListener('keyup', e => {
+  if (e.key === 'Escape') hideOptions();
+});
+
+window.setInterval(listenToMessages, 1000);
 
 function addStyle(css) {
   var style = document.createElement('style');
