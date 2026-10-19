@@ -167,14 +167,30 @@ function listenToMessages() {
     counterContainer.style.userSelect = 'none';
     counterContainer.style.fontFamily = 'monospace';
     counterContainer.innerHTML = '🚯  ';
-    counterContainer.onclick = () => {
-      showOptions();
-    };
+    counterContainer.onclick = onCounterClick;
     container.childNodes[1].prepend(counterContainer);
   }
 }
 
-function showOptions() {
+// a click count is used instead of a dblclick listener since the overlay
+// covers the counter after the first click, and forwards clicks over it
+function onCounterClick(e) {
+  if (e.detail === 2) {
+    showOptions({ resetPosition: true });
+  } else if (e.detail < 2) {
+    showOptions();
+  }
+}
+
+const isOverCounter = e => {
+  const counterContainer = document.getElementById('counter-container');
+  if (!counterContainer) return false;
+  const { left, right, top, bottom } = counterContainer.getBoundingClientRect();
+  return e.clientX >= left && e.clientX <= right
+    && e.clientY >= top && e.clientY <= bottom;
+};
+
+function showOptions({ resetPosition = false } = {}) {
   readOptions();
 
   let optionsContainer = document.getElementById('options-container');
@@ -207,6 +223,7 @@ function showOptions() {
         direction: rtl;
         transform: scaleY(-1);
         z-index: 99999;
+        cursor: move;
       }
 
       #options-container .overlay {
@@ -222,6 +239,7 @@ function showOptions() {
         margin: 1.5em;
         gap: 1em;
         z-index: 99999;
+        cursor: move;
       }
 
       #options-container label {
@@ -242,6 +260,7 @@ function showOptions() {
         padding: .3em .5em;
         outline: 1px solid #f0f0f0;
         transition: all .15s;
+        cursor: auto;
       }
 
       #options-container input:focus, #options-container textarea:focus {
@@ -330,14 +349,6 @@ function showOptions() {
 
     optionsContainer = document.getElementById('options-container');
 
-    const {
-      top,
-      right,
-    } = document.getElementById('counter-container').getBoundingClientRect();
-
-    optionsContainer.style.right = window.innerWidth - right + 'px';
-    optionsContainer.style.bottom = window.innerHeight - top + 'px';
-
     const inputs = Array.from(optionsContainer.querySelectorAll('.input'));
 
     // set as properties so values aren't parsed as HTML
@@ -360,10 +371,116 @@ function showOptions() {
     });
 
     optionsContainer.querySelector('.overlay')
-      .addEventListener('click', hideOptions);
+      .addEventListener('click', e => {
+        if (isOverCounter(e)) {
+          onCounterClick(e);
+        } else {
+          hideOptions();
+        }
+      });
+
+    makeDraggable(optionsContainer);
+  } else if (resetPosition) {
+    optionsContainer.classList.remove('hidden');
   } else {
     optionsContainer.classList.toggle('hidden');
   }
+
+  if (resetPosition) localStorage.removeItem(positionKey);
+
+  // re-applied on every open so the default follows the counter, and a
+  // stored position is brought back into view if the window shrank
+  if (!optionsContainer.classList.contains('hidden')) {
+    placeOptions(optionsContainer, readPosition() ?? defaultPosition());
+  }
+}
+
+const positionKey = 'twitch-cleaner-position';
+
+function defaultPosition() {
+  const {
+    top,
+    right,
+  } = document.getElementById('counter-container').getBoundingClientRect();
+
+  return {
+    right: window.innerWidth - right,
+    bottom: window.innerHeight - top,
+  };
+}
+
+function readPosition() {
+  try {
+    const position = JSON.parse(localStorage.getItem(positionKey));
+    return Number.isFinite(position?.right) && Number.isFinite(position?.bottom)
+      ? position
+      : null;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+}
+
+const storePosition = position =>
+  localStorage.setItem(positionKey, JSON.stringify(position));
+
+const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
+
+const currentPosition = optionsContainer => ({
+  right: parseFloat(optionsContainer.style.right),
+  bottom: parseFloat(optionsContainer.style.bottom),
+});
+
+// keeps the panel within the window
+function placeOptions(optionsContainer, { right, bottom }) {
+  const { width, height } = optionsContainer.getBoundingClientRect();
+  optionsContainer.style.right =
+    clamp(right, 0, window.innerWidth - width) + 'px';
+  optionsContainer.style.bottom =
+    clamp(bottom, 0, window.innerHeight - height) + 'px';
+}
+
+// drags from anywhere on the panel except the form elements, the overlay
+// and the resize grip, which the handle's rtl + scaleY(-1) puts top-left
+function makeDraggable(optionsContainer) {
+  const handle = optionsContainer.querySelector('.resize-handle');
+
+  const isOnResizeGrip = e => {
+    const { left, top } = handle.getBoundingClientRect();
+    const gripSize = parseFloat(getComputedStyle(handle).fontSize) * 1.5;
+    return e.target === handle
+      && e.clientX - left < gripSize
+      && e.clientY - top < gripSize;
+  };
+
+  optionsContainer.addEventListener('mousedown', e => {
+    if (e.button !== 0
+      || e.target.closest('input, textarea, select, button, .overlay')
+      || isOnResizeGrip(e)) return;
+
+    // prevents text selection while dragging
+    e.preventDefault();
+
+    const start = { x: e.clientX, y: e.clientY };
+    const startPosition = currentPosition(optionsContainer);
+    let moved = false;
+
+    // positioned by right/bottom so resizing keeps growing towards top-left
+    const onMove = e => {
+      moved = true;
+      placeOptions(optionsContainer, {
+        right: startPosition.right - (e.clientX - start.x),
+        bottom: startPosition.bottom - (e.clientY - start.y),
+      });
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', () => {
+      document.removeEventListener('mousemove', onMove);
+      // plain clicks don't store, so the default keeps following the counter
+      if (moved) storePosition(currentPosition(optionsContainer));
+    }, { once: true });
+  });
 }
 
 function hideOptions() {
