@@ -6,6 +6,8 @@
 // @author       Filipe Sabella
 // @license      MIT
 // @match        https://www.twitch.tv/*
+// @grant        none
+// @run-at       document-idle
 // ==/UserScript==
 
 const defaults = {
@@ -265,8 +267,6 @@ function showOptions() {
       }
     `);
 
-    const freeFilters = serializeFilters(options.freeFilters);
-
     document.body.insertAdjacentHTML('beforeend', `
       <div id="options-container">
         <div class="overlay"></div>
@@ -278,28 +278,23 @@ function showOptions() {
                 spammy messages
               </span>
             </label>
-            <input class="input" type="checkbox" name="spammy"
-              ${options.spammy && 'checked'}></input>
+            <input class="input" type="checkbox" name="spammy">
           </div>
           <div>
             <label>Block emote only</label>
-            <input class="input" type="checkbox" name="emojiOnly"
-              ${options.emojiOnly && 'checked'}></input>
+            <input class="input" type="checkbox" name="emojiOnly">
           </div>
           <div>
             <label>Block all caps</label>
-            <input class="input" type="checkbox" name="allCaps"
-              ${options.allCaps && 'checked'}></input>
+            <input class="input" type="checkbox" name="allCaps">
           </div>
           <div>
             <label>Max words per message</label>
-            <input class="input" type="number" name="maxWords"
-              value="${options.maxWords}"></input>
+            <input class="input" type="number" name="maxWords">
           </div>
           <div>
             <label>Min words per message</label>
-            <input class="input" type="number" name="minWords"
-              value="${options.minWords}"></input>
+            <input class="input" type="number" name="minWords">
           </div>
           <div class="textarea-container">
             <p>
@@ -313,7 +308,7 @@ function showOptions() {
             </p>
             <textarea
               class="input"
-              name="freeFilters">${freeFilters}</textarea>
+              name="freeFilters"></textarea>
           </div>
           <div>
             <label>
@@ -323,13 +318,11 @@ function showOptions() {
                 containing
               </span>
             </label>
-            <input class="input" type="text" name="allowWords"
-              value="${options.allowWords.join(' ')}"></input>
+            <input class="input" type="text" name="allowWords">
           </div>
           <div>
             <label>Disable all filters</label>
-            <input class="input" type="checkbox" name="disableAll"
-              ${options.disableAll && 'checked'}></input>
+            <input class="input" type="checkbox" name="disableAll">
           </div>
         </div>
       </div>
@@ -345,24 +338,29 @@ function showOptions() {
     optionsContainer.style.right = window.innerWidth - right + 'px';
     optionsContainer.style.bottom = window.innerHeight - top + 'px';
 
-    document.querySelectorAll('#options-container .input').forEach(e => {
-      e.onkeyup = e.onkeypress = e.onchange = () => {
-        const opts = Array.from(
-          document.querySelectorAll('#options-container .input')
-        ).reduce((acc, e) => {
-          const name = e.name;
-          acc[name] = e.type === 'checkbox' ?
-            e.checked :
-            e.value;
-          return acc;
-        }, {});
+    const inputs = Array.from(optionsContainer.querySelectorAll('.input'));
 
-        storeOptions(opts);
-        readOptions();
-      };
+    // set as properties so values aren't parsed as HTML
+    const formValues = {
+      ...options,
+      freeFilters: serializeFilters(options.freeFilters),
+      allowWords: options.allowWords.join(' '),
+    };
+    inputs.forEach(e => {
+      if (e.type === 'checkbox') {
+        e.checked = formValues[e.name];
+      } else {
+        e.value = formValues[e.name];
+      }
     });
 
-    document.querySelector('#options-container .overlay').onclick = hideOptions;
+    optionsContainer.addEventListener('input', () => {
+      storeOptions(readForm(inputs));
+      readOptions();
+    });
+
+    optionsContainer.querySelector('.overlay')
+      .addEventListener('click', hideOptions);
   } else {
     optionsContainer.classList.toggle('hidden');
   }
@@ -429,6 +427,9 @@ const serializeFilters = freeFilters => freeFilters
 // ['aaa', 'hello there', 'bbb', '/a regex/']
 const parseFilters = s => (s.match(/"[^"]+"|\/[^\/]+\/[a-z]*|\S+/g) || [])
   .map(s => s.replace(/"/g, ''));
+
+const readForm = inputs => Object.fromEntries(inputs.map(e =>
+  [e.name, e.type === 'checkbox' ? e.checked : e.value]));
 
 function storeOptions(form) {
   const options = {
