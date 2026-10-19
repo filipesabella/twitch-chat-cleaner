@@ -26,26 +26,41 @@ const defaults = {
 };
 
 let options = defaults;
+let filters = { free: [], allow: null };
 let counter = 0;
 
-function isGarbage(options, s) {
+const escapeRegex = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function compileFilter(filter) {
+  try {
+    const regex = filter.match(/^\/(.+)\/([a-z]*)$/);
+    return regex
+      // stateful flags would make `test` skip matches on subsequent calls
+      ? new RegExp(regex[1], regex[2].replace(/[gy]/g, ''))
+      : new RegExp(escapeRegex(filter), 'i');
+  } catch (e) {
+    console.error(`Ignoring invalid filter: ${filter}`, e);
+    return null;
+  }
+}
+
+function compileFilters(options) {
+  return {
+    free: options.freeFilters.map(compileFilter).filter(Boolean),
+    allow: options.allowWords.length > 0
+      ? new RegExp(options.allowWords.map(escapeRegex).join('|'), 'i')
+      : null,
+  };
+}
+
+function isGarbage(options, filters, s) {
   const trimmed = s.trim();
   const upperCased = trimmed.toUpperCase();
   const words = trimmed.split(' ').filter(s => s !== '');
 
   const isUpperCase = s => s === upperCased;
 
-  const filteredOut = _ => options
-    .freeFilters
-    .map(filter => {
-      if (filter[0] === '/') {
-        const [_, regex, flags] = filter.match(/\/(.*)\/(.*)/);
-        return new RegExp(regex, flags);
-      } else {
-        return new RegExp(`.*${filter}.*`, 'i');
-      }
-    })
-    .find(filter => filter.test(trimmed));
+  const filteredOut = _ => filters.free.find(filter => filter.test(trimmed));
 
   const isMessageTooLong = _ => words.length > options.maxWords;
   const isMessageTooShort = _ => words.length < options.minWords;
@@ -80,11 +95,7 @@ function handler(messageContainer) {
   const text = Array.from(messageContainer.querySelectorAll('.text-fragment'))
     .map(e => e.innerHTML).join(' ').trim();
 
-  if (options.allowWords.length > 0) {
-    const allowRegex =
-      new RegExp('.*(' + options.allowWords.join('|') + ').*', 'i');
-    if (allowRegex.test(text)) return false;
-  }
+  if (filters.allow?.test(text)) return false;
 
   const tooManyEmoji = () => options.spammy && messageContainer
     .querySelectorAll('.chat-line__message--emote-button')
@@ -94,7 +105,7 @@ function handler(messageContainer) {
     remove(messageContainer);
     console.log(`Filtered message: "${text}". Reason: too many emoji.`);
   } else {
-    const [garbage, reason] = isGarbage(options, text);
+    const [garbage, reason] = isGarbage(options, filters, text);
     if (garbage) {
       remove(messageContainer);
       console.log(`Filtered message: "${text}". Reason: ${reason}.`);
@@ -250,7 +261,7 @@ function showOptions() {
       }
     `);
 
-    const freeFilters = options.freeFilters.join(' ');
+    const freeFilters = serializeFilters(options.freeFilters);
 
     document.body.insertAdjacentHTML('beforeend', `
       <div id="options-container">
@@ -370,41 +381,57 @@ function addStyle(css) {
   document.head.appendChild(style);
 }
 
+const toNumber = (value, fallback) => {
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+// number inputs are stored as strings, and may be empty while being edited
+const normalize = options => ({
+  ...options,
+  maxWords: toNumber(options.maxWords, defaults.maxWords),
+  minWords: toNumber(options.minWords, defaults.minWords),
+  tooManyDuplicatesThreshold: toNumber(
+    options.tooManyDuplicatesThreshold, defaults.tooManyDuplicatesThreshold),
+  tooManyEmojiThreshold: toNumber(
+    options.tooManyEmojiThreshold, defaults.tooManyEmojiThreshold),
+});
+
 function readOptions() {
   try {
     const s = localStorage.getItem('twitch-cleaner-options');
-    const opt = s ? JSON.parse(s) : defaults;
-    const merged = {
+    options = normalize({
       ...defaults,
-      ...opt,
-    };
-
-    // puts quotes back into multi-word items. e.g., the array:
-    // ['aaa', 'hello there', 'bbb', '/a regex/']
-    // returns the string:
-    // aaa "hello there" bbb /a regex/
-    merged.freeFilters = merged.freeFilters
-      .map(w => w.includes(' ') && w[0] !== '/' ? `"${w}"` : w);
-
-    options = merged;
+      ...(s ? JSON.parse(s) : {}),
+    });
   } catch (e) {
     console.error(e);
     options = defaults;
   }
+  filters = compileFilters(options);
 }
 
-function storeOptions(options) {
-  // split into array and remove possible double-quotes. e.g., the string:
-  // aaa "hello there" bbb /a regex/
-  // returns the array:
-  // ['aaa', 'hello there', 'bbb', '/a regex/']
-  options.freeFilters = options.freeFilters
-    .match(/\w+|"[^"]+"|\/[^\/]+\/[a-z]*/g)
-    .map(s => s.replace(/"/g, ''));
+// puts quotes back into multi-word items. e.g., the array:
+// ['aaa', 'hello there', 'bbb', '/a regex/']
+// returns the string:
+// aaa "hello there" bbb /a regex/
+const serializeFilters = freeFilters => freeFilters
+  .map(w => w.includes(' ') && w[0] !== '/' ? `"${w}"` : w)
+  .join(' ');
 
-  options.allowWords = options.allowWords.split(' ')
-    .map(s => s.trim())
-    .filter(s => s);
+// split into array and remove possible double-quotes. e.g., the string:
+// aaa "hello there" bbb /a regex/
+// returns the array:
+// ['aaa', 'hello there', 'bbb', '/a regex/']
+const parseFilters = s => (s.match(/"[^"]+"|\/[^\/]+\/[a-z]*|\S+/g) || [])
+  .map(s => s.replace(/"/g, ''));
+
+function storeOptions(form) {
+  const options = {
+    ...form,
+    freeFilters: parseFilters(form.freeFilters),
+    allowWords: form.allowWords.split(/\s+/).filter(s => s),
+  };
 
   localStorage.setItem(
     'twitch-cleaner-options',
