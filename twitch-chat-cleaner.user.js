@@ -15,6 +15,8 @@ const defaults = {
   spammy: true,
   emojiOnly: true,
   allCaps: true,
+  keepImportant: true,
+  hideAnnouncements: false,
   freeFilters: [
     'lulw',
     'you can use quotes',
@@ -89,46 +91,91 @@ function isGarbage(options, filters, s) {
   }
 }
 
-function handler(messageContainer) {
-  if (options.disableAll) return false;
-
-  const text = Array.from(messageContainer.querySelectorAll('.text-fragment'))
+const messageText = messageContainer =>
+  Array.from(messageContainer.querySelectorAll('.text-fragment'))
     .map(e => e.textContent).join(' ').trim();
 
-  if (filters.allow?.test(text)) return false;
+// badge image ids don't depend on the user's language, unlike the alt text
+const importantBadgeIds = [
+  '5527c58c-fb7d-422d-b71b-f309dcb85cc1', // broadcaster
+  '3267646d-33f0-4b17-b3df-f923a41db1d0', // moderator
+  'b817aba4-fad8-49e2-b88a-7cc744dfa6ec', // vip
+];
+
+const isImportantBadge = badge =>
+  importantBadgeIds.some(id => badge.src.includes(`/${id}/`))
+  || /^(broadcaster|moderator|lead moderator|vip)( badge)?$/i.test(badge.alt);
+
+const isImportant = messageContainer => Array
+  .from(messageContainer.querySelectorAll('img.chat-badge'))
+  .some(isImportantBadge);
+
+// returns why the message should be hidden, or null to show it
+function filterReason(options, filters, messageContainer, text) {
+  if (options.disableAll) return null;
+
+  if (filters.allow?.test(text)) return null;
+
+  // checked before important messages, since only mods can announce
+  if (messageContainer.matches(announcementSelector)) {
+    return options.hideAnnouncements ? 'announcement' : null;
+  }
+
+  if (options.keepImportant && isImportant(messageContainer)) return null;
 
   const tooManyEmoji = () => options.spammy && messageContainer
     .querySelectorAll('.chat-line__message--emote-button')
     .length >= options.tooManyEmojiThreshold;
 
-  if (tooManyEmoji()) {
-    remove(messageContainer);
-    console.log(`Filtered message: "${text}". Reason: too many emotes.`);
-  } else {
-    const [garbage, reason] = isGarbage(options, filters, text);
-    if (garbage) {
-      remove(messageContainer);
-      console.log(`Filtered message: "${text}". Reason: ${reason}.`);
-    }
+  if (tooManyEmoji()) return 'too many emotes';
+
+  const [garbage, reason] = isGarbage(options, filters, text);
+  return garbage ? reason : null;
+}
+
+// also shows messages that no longer match, so it can be re-run on
+// visible messages when options change
+function handler(messageContainer) {
+  const text = messageText(messageContainer);
+  const reason = filterReason(options, filters, messageContainer, text);
+  const wasHidden = 'cleanerHidden' in messageContainer.dataset;
+
+  if (reason && !wasHidden) {
+    // removing the node causes issues with other twitch features
+    messageContainer.dataset.cleanerHidden = reason;
+    messageContainer.style.display = 'none';
+    updateCounter(1);
+    console.log(`Filtered message: "${text}". Reason: ${reason}.`);
+  } else if (!reason && wasHidden) {
+    delete messageContainer.dataset.cleanerHidden;
+    messageContainer.style.display = '';
+    updateCounter(-1);
   }
 }
 
-function remove(messageContainer) {
-  // removing the node causes issues with other twitch features
-  // messageContainer.remove();
-  messageContainer.style.display = 'none';
-  ++counter;
+function updateCounter(delta) {
+  counter += delta;
   const counterContainer = document.getElementById('counter-container');
   if (counterContainer) counterContainer.innerHTML = '🚯 ' + counter;
 }
 
-const messageSelector = '.chat-line__message';
+const refilter = () => new Set(Array
+  .from(observedContainer?.querySelectorAll(messageSelector) ?? [])
+  .map(toMessage))
+  .forEach(handler);
+
+// announcements wrap the message with a header, so the whole announcement is
+// treated as the message, otherwise hiding it would leave the header behind
+const announcementSelector = '.announcement-line';
+const messageSelector = `${announcementSelector}, .chat-line__message`;
+
+const toMessage = el => el.closest(announcementSelector) ?? el;
 
 // added nodes can be text nodes, or the message line itself
 const findMessage = node => !(node instanceof Element)
   ? null
   : node.matches(messageSelector)
-    ? node
+    ? toMessage(node)
     : node.querySelector(messageSelector);
 
 let observer = null;
@@ -308,6 +355,10 @@ function showOptions({ resetPosition = false } = {}) {
             <input class="input" type="checkbox" name="allCaps">
           </div>
           <div>
+            <label>Block announcements</label>
+            <input class="input" type="checkbox" name="hideAnnouncements">
+          </div>
+          <div>
             <label>Max words per message</label>
             <input class="input" type="number" name="maxWords">
           </div>
@@ -340,6 +391,16 @@ function showOptions({ resetPosition = false } = {}) {
             <input class="input" type="text" name="allowWords">
           </div>
           <div>
+            <label>
+              ALLOW
+              <span class="help" title="Never hide messages from the broadcaster, moderators and VIPs.
+  Announcements are still blocked if that option is on.">
+                important messages
+              </span>
+            </label>
+            <input class="input" type="checkbox" name="keepImportant">
+          </div>
+          <div>
             <label>Disable all filters</label>
             <input class="input" type="checkbox" name="disableAll">
           </div>
@@ -368,6 +429,7 @@ function showOptions({ resetPosition = false } = {}) {
     optionsContainer.addEventListener('input', () => {
       storeOptions(readForm(inputs));
       readOptions();
+      refilter();
     });
 
     optionsContainer.querySelector('.overlay')
