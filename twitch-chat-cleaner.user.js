@@ -68,7 +68,7 @@ function isGarbage(options, filters, s) {
     words.length / new Set(words).size >= options.tooManyDuplicatesThreshold;
 
   if (trimmed === '') {
-    return options.emojiOnly ? [true, 'emoji only'] : [false, ''];
+    return options.emojiOnly ? [true, 'emote only'] : [false, ''];
   } else if (options.allCaps && isUpperCase(trimmed)) {
     return [true, 'all caps'];
   } else if (isMessageTooLong(trimmed)) {
@@ -101,7 +101,7 @@ function handler(messageContainer) {
 
   if (tooManyEmoji()) {
     remove(messageContainer);
-    console.log(`Filtered message: "${text}". Reason: too many emoji.`);
+    console.log(`Filtered message: "${text}". Reason: too many emotes.`);
   } else {
     const [garbage, reason] = isGarbage(options, filters, text);
     if (garbage) {
@@ -274,7 +274,7 @@ function showOptions() {
         <div class="content">
           <div>
             <label>Block
-              <span title="Overall spam with duplicated text or too many emoji">
+              <span title="Overall spam with duplicated text or too many emotes">
                 spammy messages
               </span>
             </label>
@@ -282,7 +282,7 @@ function showOptions() {
               ${options.spammy && 'checked'}></input>
           </div>
           <div>
-            <label>Block emoji only</label>
+            <label>Block emote only</label>
             <input class="input" type="checkbox" name="emojiOnly"
               ${options.emojiOnly && 'checked'}></input>
           </div>
