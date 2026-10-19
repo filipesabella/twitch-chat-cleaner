@@ -55,10 +55,10 @@ function compileFilters(options) {
 
 function isGarbage(options, filters, s) {
   const trimmed = s.trim();
-  const upperCased = trimmed.toUpperCase();
   const words = trimmed.split(' ').filter(s => s !== '');
 
-  const isUpperCase = s => s === upperCased;
+  // requiring a lowercase variant skips digits, symbols and caseless scripts
+  const isUpperCase = s => s !== s.toLowerCase() && s === s.toUpperCase();
 
   const filteredOut = _ => filters.free.find(filter => filter.test(trimmed));
 
@@ -67,8 +67,8 @@ function isGarbage(options, filters, s) {
   const isDuplicatedPhrase = words =>
     words.length / new Set(words).size >= options.tooManyDuplicatesThreshold;
 
-  if (options.emojiOnly && trimmed === '') {
-    return [true, 'emoji only'];
+  if (trimmed === '') {
+    return options.emojiOnly ? [true, 'emoji only'] : [false, ''];
   } else if (options.allCaps && isUpperCase(trimmed)) {
     return [true, 'all caps'];
   } else if (isMessageTooLong(trimmed)) {
@@ -93,7 +93,7 @@ function handler(messageContainer) {
   if (messageContainer.className !== 'chat-line__message') return;
 
   const text = Array.from(messageContainer.querySelectorAll('.text-fragment'))
-    .map(e => e.innerHTML).join(' ').trim();
+    .map(e => e.textContent).join(' ').trim();
 
   if (filters.allow?.test(text)) return false;
 
